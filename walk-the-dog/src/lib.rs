@@ -1,6 +1,7 @@
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::console;
+use rand::prelude::*;
 
 // When the `wee_alloc` feature is enabled, this uses `wee_alloc` as the global
 // allocator.
@@ -10,16 +11,23 @@ use web_sys::console;
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
-fn draw_triangle(context: &web_sys::CanvasRenderingContext2d, points: [(f64, f64); 3]) {
+fn draw_triangle(
+    context: &web_sys::CanvasRenderingContext2d,
+    points: [(f64, f64); 3],
+    color: (u8, u8, u8),
+) {
     let [top, left, right] = points;
 
+    let color_str = format!("rgb({}, {}, {})", color.0, color.1, color.2);
+    context.set_fill_style(&wasm_bindgen::JsValue::from_str(&color_str));
+    
     context.move_to(top.0, top.1);
     context.begin_path();
     context.line_to(top.0, top.1);
     context.line_to(left.0, left.1);
     context.line_to(right.0, right.1);
     context.close_path();
-    context.stroke();
+    context.fill();
 }
 
 // https://en.wikipedia.org/wiki/Heron%27s_formula
@@ -36,11 +44,18 @@ fn draw_sierpinski_gasket(context: &web_sys::CanvasRenderingContext2d, points: [
     let top = points[0];
     let left = points[1];
     let right = points[2];
-    if calc_triangle_area(top, left, right) < 10.0 {
+    if calc_triangle_area(top, left, right) < 100.0 {
         return;
     }
 
-    draw_triangle(context, points);
+    let mut rng = thread_rng();
+    let color = (
+        rng.gen_range(0..255),
+        rng.gen_range(0..255),
+        rng.gen_range(0..255),
+    );
+
+    draw_triangle(context, points, color);
 
     let mid_left = ((top.0 + left.0) / 2.0, (top.1 + left.1) / 2.0);
     let mid_right = ((top.0 + right.0) / 2.0, (top.1 + right.1) / 2.0);
@@ -79,7 +94,6 @@ pub fn main_js() -> Result<(), JsValue> {
     let top = (300.0, 0.0);
     let left = (0.0, 600.0);
     let right = (600.0, 600.0);
-    console::log_1(&JsValue::from_str(&format!("{:?}", calc_triangle_area(top, left, right))));
     draw_sierpinski_gasket(&context, [top, left, right]);
 
     // Your code goes here!
