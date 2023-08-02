@@ -37,66 +37,6 @@ struct Cell {
     frame: Rect,
 }
 
-fn draw_triangle(
-    context: &web_sys::CanvasRenderingContext2d,
-    points: [(f64, f64); 3],
-    color: (u8, u8, u8),
-) {
-    let [top, left, right] = points;
-
-    let color_str = format!("rgb({}, {}, {})", color.0, color.1, color.2);
-    context.set_fill_style(&wasm_bindgen::JsValue::from_str(&color_str));
-
-    context.move_to(top.0, top.1);
-    context.begin_path();
-    context.line_to(top.0, top.1);
-    context.line_to(left.0, left.1);
-    context.line_to(right.0, right.1);
-    context.close_path();
-    context.fill();
-}
-
-// https://en.wikipedia.org/wiki/Heron%27s_formula
-fn calc_triangle_area(a: (f64, f64), b: (f64, f64), c: (f64, f64)) -> f64 {
-    let x = ((a.0 - b.0).powi(2) + (a.1 - b.1).powi(2)).sqrt();
-    let y = ((b.0 - c.0).powi(2) + (b.1 - c.1).powi(2)).sqrt();
-    let z = ((c.0 - a.0).powi(2) + (c.1 - a.1).powi(2)).sqrt();
-
-    let s = (x + y + z) / 2.0;
-    (s * (s - x) * (s - y) * (s - z)).sqrt()
-}
-
-fn draw_sierpinski_gasket(context: &web_sys::CanvasRenderingContext2d, points: [(f64, f64); 3]) {
-    let top = points[0];
-    let left = points[1];
-    let right = points[2];
-    if calc_triangle_area(top, left, right) < 100.0 {
-        return;
-    }
-
-    let mut rng = thread_rng();
-    let color = (
-        rng.gen_range(0..255),
-        rng.gen_range(0..255),
-        rng.gen_range(0..255),
-    );
-
-    draw_triangle(context, points, color);
-
-    let mid_left = ((top.0 + left.0) / 2.0, (top.1 + left.1) / 2.0);
-    let mid_right = ((top.0 + right.0) / 2.0, (top.1 + right.1) / 2.0);
-    let mid_bottom = ((left.0 + right.0) / 2.0, (left.1 + right.1) / 2.0);
-
-    // left-side
-    draw_sierpinski_gasket(context, [mid_left, left, mid_bottom]);
-
-    // right-side
-    draw_sierpinski_gasket(context, [mid_right, mid_bottom, right]);
-
-    // top-side
-    draw_sierpinski_gasket(context, [top, mid_left, mid_right]);
-}
-
 async fn fetch_json(json_path: &str) -> Result<JsValue, JsValue> {
     let window = web_sys::window().unwrap();
     let resp_value = wasm_bindgen_futures::JsFuture::from(window.fetch_with_str(json_path)).await?;
@@ -154,12 +94,6 @@ pub fn main_js() -> Result<(), JsValue> {
             .draw_image_with_html_image_element(&image, 0.0, 0.0)
             .unwrap();
 
-        let top = (300.0, 0.0);
-        let left = (0.0, 600.0);
-        let right = (600.0, 600.0);
-        draw_sierpinski_gasket(&context, [top, left, right]);
-
-        
         // read sprite sheet
         context.draw_image_with_html_image_element(&image, 0.0, 0.0);
 
