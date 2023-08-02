@@ -1,5 +1,4 @@
 use gloo_utils::format::JsValueSerdeExt;
-use rand::prelude::*;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -66,37 +65,6 @@ pub fn main_js() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
     wasm_bindgen_futures::spawn_local(async move {
-        let (success_tx, success_rx) = futures::channel::oneshot::channel::<Result<(), JsValue>>();
-        let success_tx = Rc::new(Mutex::new(Some(success_tx)));
-        let error_tx = Rc::clone(&success_tx);
-
-        let image = web_sys::HtmlImageElement::new().unwrap();
-
-        let callback = Closure::once(move || {
-            if let Some(success_tx) = success_tx.lock().ok().and_then(|mut opt| opt.take()) {
-                success_tx.send(Ok(()));
-            }
-        });
-        let err_callback = Closure::once(move |err| {
-            if let Some(error_tx) = error_tx.lock().ok().and_then(|mut opt| opt.take()) {
-                error_tx.send(Err(err));
-            }
-        });
-
-        image.set_onload(Some(callback.as_ref().unchecked_ref()));
-        image.set_onerror(Some(err_callback.as_ref().unchecked_ref()));
-
-        image.set_src((String::from(RHB_PATH) + "Idle (1).png").as_str());
-
-        success_rx.await;
-
-        context
-            .draw_image_with_html_image_element(&image, 0.0, 0.0)
-            .unwrap();
-
-        // read sprite sheet
-        context.draw_image_with_html_image_element(&image, 0.0, 0.0);
-
         let json = fetch_json((String::from(SPRITE_PATH) + "rhb.json").as_str())
             .await
             .expect("Failed to fetch JSON");
@@ -126,21 +94,30 @@ pub fn main_js() -> Result<(), JsValue> {
         image.set_src((String::from(SPRITE_PATH) + "rhb.png").as_str());
         success_rx.await;
 
-        let sprite = sheet
-            .frames
-            .get("Run (1).png")
-            .expect("Cell not found");
-        context.draw_image_with_html_image_element_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(
-            &image,
-            sprite.frame.x.into(),
-            sprite.frame.y.into(),
-            sprite.frame.w.into(),
-            sprite.frame.h.into(),
-            300.0,
-            300.0,
-            sprite.frame.w.into(),
-            sprite.frame.h.into(),
+        let mut frame = -1;
+        let interval_callback = Closure::wrap(Box::new(move || {
+            frame += 1;
+            context.clear_rect(0.0, 0.0, 600.0, 600.0);
+
+            let frame_name = format!("Run ({}).png", frame % 8 + 1);
+            let sprite = sheet.frames.get(&frame_name).expect("Cell not found");
+            context.draw_image_with_html_image_element_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(
+                &image,
+                sprite.frame.x.into(),
+                sprite.frame.y.into(),
+                sprite.frame.w.into(),
+                sprite.frame.h.into(),
+                300.0,
+                300.0,
+                sprite.frame.w.into(),
+                sprite.frame.h.into(),
+            );
+        }) as Box<dyn FnMut()>);
+        window.set_interval_with_callback_and_timeout_and_arguments_0(
+            interval_callback.as_ref().unchecked_ref(),
+            50,
         );
+        interval_callback.forget();
     });
 
     // Your code goes here!
