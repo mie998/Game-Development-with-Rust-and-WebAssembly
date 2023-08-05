@@ -51,7 +51,7 @@ pub fn main_js() -> Result<(), JsValue> {
             .expect("Failed to fetch JSON");
         let sheet: Sheet = json.into_serde().expect("Failed to parse JSON");
         
-        let image = engine::load_image((String::from(RHB_PATH) + "Run (1).png").as_str())
+        let image = engine::load_image((String::from(SPRITE_PATH) + "rhb.png").as_str())
             .await
             .expect("Failed to load image rhb.png");
 
