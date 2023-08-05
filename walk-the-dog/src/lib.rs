@@ -1,11 +1,13 @@
 use gloo_utils::format::JsValueSerdeExt;
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::rc::Rc;
-use std::sync::Mutex;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::console;
+
+#[macro_use]
+mod browser;
+mod engine;
 
 const RHB_PATH: &str = "walk_the_dog_assets-0.0.7/resized/rhb/";
 const SPRITE_PATH: &str = "walk_the_dog_assets-0.0.7/sprite_sheets/";
@@ -36,63 +38,22 @@ struct Cell {
     frame: Rect,
 }
 
-async fn fetch_json(json_path: &str) -> Result<JsValue, JsValue> {
-    let window = web_sys::window().unwrap();
-    let resp_value = wasm_bindgen_futures::JsFuture::from(window.fetch_with_str(json_path)).await?;
-    let resp: web_sys::Response = resp_value.dyn_into()?;
-
-    wasm_bindgen_futures::JsFuture::from(resp.json()?).await
-}
-
 // This is like the `main` function, except for JavaScript.
 #[wasm_bindgen(start)]
 pub fn main_js() -> Result<(), JsValue> {
-    let window = web_sys::window().unwrap();
-    let document = window.document().unwrap();
-    let canvas = document
-        .get_element_by_id("canvas")
-        .unwrap()
-        .dyn_into::<web_sys::HtmlCanvasElement>()
-        .unwrap();
-
-    let context = canvas
-        .get_context("2d")
-        .unwrap()
-        .unwrap()
-        .dyn_into::<web_sys::CanvasRenderingContext2d>()
-        .unwrap();
-
     console_error_panic_hook::set_once();
 
-    wasm_bindgen_futures::spawn_local(async move {
-        let json = fetch_json((String::from(SPRITE_PATH) + "rhb.json").as_str())
+    let context = browser::context().expect("Failed to get context");
+
+    browser::spawn_local(async move {
+        let json = browser::fetch_json((String::from(SPRITE_PATH) + "rhb.json").as_str())
             .await
             .expect("Failed to fetch JSON");
-
         let sheet: Sheet = json.into_serde().expect("Failed to parse JSON");
-
-        let (success_tx, success_rx) = futures::channel::oneshot::channel::<Result<(), JsValue>>();
-        let success_tx = Rc::new(Mutex::new(Some(success_tx)));
-        let error_tx = Rc::clone(&success_tx);
-
-        let image = web_sys::HtmlImageElement::new().unwrap();
-
-        let callback = Closure::once(move || {
-            if let Some(success_tx) = success_tx.lock().ok().and_then(|mut opt| opt.take()) {
-                success_tx.send(Ok(()));
-            }
-        });
-        let err_callback = Closure::once(move |err| {
-            if let Some(error_tx) = error_tx.lock().ok().and_then(|mut opt| opt.take()) {
-                error_tx.send(Err(err));
-            }
-        });
-
-        image.set_onload(Some(callback.as_ref().unchecked_ref()));
-        image.set_onerror(Some(err_callback.as_ref().unchecked_ref()));
-
-        image.set_src((String::from(SPRITE_PATH) + "rhb.png").as_str());
-        success_rx.await;
+        
+        let image = engine::load_image((String::from(RHB_PATH) + "Run (1).png").as_str())
+            .await
+            .expect("Failed to load image rhb.png");
 
         let mut frame = -1;
         let interval_callback = Closure::wrap(Box::new(move || {
@@ -113,10 +74,13 @@ pub fn main_js() -> Result<(), JsValue> {
                 sprite.frame.h.into(),
             );
         }) as Box<dyn FnMut()>);
-        window.set_interval_with_callback_and_timeout_and_arguments_0(
-            interval_callback.as_ref().unchecked_ref(),
-            50,
-        );
+
+        browser::window()
+            .unwrap()
+            .set_interval_with_callback_and_timeout_and_arguments_0(
+                interval_callback.as_ref().unchecked_ref(),
+                50,
+            );
         interval_callback.forget();
     });
 
