@@ -54,6 +54,7 @@ features = [
   "CanvasRenderingContext2d",
   "Response",
   "Performance",
+  "KeyboardEvent",
 ]
 
 # These crates are used for running unit tests.
