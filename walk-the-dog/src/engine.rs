@@ -19,8 +19,10 @@ pub struct SheetRect {
 }
 
 #[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct Cell {
     pub frame: SheetRect,
+    pub sprite_source_size: SheetRect,
 }
 
 #[derive(Deserialize, Clone)]
@@ -39,6 +41,15 @@ pub struct Rect {
     pub y: f32,
     pub width: f32,
     pub height: f32,
+}
+
+impl Rect {
+    pub fn intersects(&self, rect: &Rect) -> bool {
+        self.x < rect.x + rect.width
+            && self.x + self.width > rect.x
+            && self.y < rect.y + rect.height
+            && self.y + self.height > rect.y
+    }
 }
 
 pub struct Renderer {
@@ -69,6 +80,21 @@ impl Renderer {
                 destination.height.into(),
             )
             .expect("Drawing is throwing exceptions! Unrecoverable error.");
+    }
+
+    pub fn draw_entire_image(&self, image: &HtmlImageElement, position: &Point) {
+        self.context
+            .draw_image_with_html_image_element(image, position.x.into(), position.y.into())
+            .expect("Drawing is throwing exceptions! Unrecoverable error.");
+    }
+
+    pub fn draw_stroke_rect(&self, rect: &Rect) {
+        self.context.stroke_rect(
+            rect.x.into(),
+            rect.y.into(),
+            rect.width.into(),
+            rect.height.into(),
+        );
     }
 }
 
@@ -219,4 +245,34 @@ fn prepare_input() -> Result<UnboundedReceiver<KeyPress>> {
     onkeyup.forget();
 
     Ok(keyevent_receiver)
+}
+
+pub struct Image {
+    element: HtmlImageElement,
+    position: Point,
+    pub bounding_box: Rect,
+}
+
+impl Image {
+    pub fn new(element: HtmlImageElement, position: Point) -> Self {
+        let bounding_box = Rect {
+            x: position.x.into(),
+            y: position.y.into(),
+            width: element.width() as f32,
+            height: element.height() as f32,
+        };
+
+        Self {
+            element,
+            position,
+            bounding_box,
+        }
+    }
+
+    pub fn draw(&self, renderer: &Renderer) {
+        // for debug
+        renderer.draw_stroke_rect(&self.bounding_box);
+        
+        renderer.draw_entire_image(&self.element, &self.position);
+    }
 }
