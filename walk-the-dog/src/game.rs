@@ -83,10 +83,10 @@ impl Game for WalkTheDog {
             velocity.x -= 10;
         }
         if keystate.is_pressed("ArrowUp") {
-            velocity.y += 10;
+            velocity.y -= 10;
         }
         if keystate.is_pressed("ArrowDown") {
-            velocity.y -= 10;
+            velocity.y += 10;
         }
         
         self.position.x += velocity.x;

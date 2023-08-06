@@ -58,8 +58,10 @@ type SharedLoopClosure = Rc<RefCell<Option<LoopClosure>>>;
 
 impl GameLoop {
     pub async fn start(mut game: impl Game + 'static) -> Result<()> {
+        log!("before prepare: {}", browser::now()?);
         let mut keyevent_reciever = prepare_input()?;
         let mut game = game.initialize().await?;
+        log!("after prepare: {}", browser::now()?);
         let mut game_loop = GameLoop {
             last_frame: browser::now()?,
             accumulated_delta: 0.0,
@@ -200,8 +202,7 @@ fn process_input(state: &mut KeyState, keyevent_receiver: &mut UnboundedReceiver
                 KeyPress::KeyDown(event) => state.set_pressed(&event.code(), event),
             },
             Ok(None) => break,
-            Err(err) => {
-                error!("Error receiving keypress {:#?}", err);
+            Err(_err) => {
                 break;
             }
         }
