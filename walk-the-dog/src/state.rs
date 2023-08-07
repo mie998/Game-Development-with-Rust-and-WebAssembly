@@ -155,6 +155,7 @@ pub mod red_hat_boy_states {
     const FALLING_FRAME_NAME: &str = "Dead";
     const KNOCKED_OUT_FRAME_NAME: &str = "Dead";
     const GRAVITY: i16 = 1;
+    const TERMINAL_VELOCITY: i16 = 20;
     const FLOOR: i16 = 479;
     const PLAYER_HEIGHT: i16 = HEIGHT - FLOOR;
     const STARTING_POINT: i16 = -20;
@@ -163,12 +164,14 @@ pub mod red_hat_boy_states {
     pub struct RedHatBoyContext {
         pub frame: u8,
         pub position: Point,
-        velocity: Point,
+        pub velocity: Point,
     }
 
     impl RedHatBoyContext {
         pub fn update(mut self, frame_count: u8) -> Self {
-            self.velocity.y += GRAVITY;
+            if self.velocity.y + GRAVITY < TERMINAL_VELOCITY {
+                self.velocity.y += GRAVITY;
+            }
 
             if self.frame < frame_count {
                 self.frame += 1;

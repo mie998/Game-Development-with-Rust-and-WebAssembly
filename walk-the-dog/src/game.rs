@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use gloo_utils::format::JsValueSerdeExt;
 use web_sys::HtmlImageElement;
 
-pub const HEIGHT : i16 = 600;
+pub const HEIGHT: i16 = 600;
 
 pub struct RedHatBoy {
     state_machine: RedHatBoyStateMachine,
@@ -86,9 +86,17 @@ impl RedHatBoy {
     fn knock_out(&mut self) {
         self.state_machine = self.state_machine.transition(Event::KnockOut);
     }
-    
+
     fn land_on(&mut self, position: f32) {
         self.state_machine = self.state_machine.transition(Event::Land(position));
+    }
+
+    fn pos_y(&self) -> i16 {
+        self.state_machine.context().position.y
+    }
+
+    fn velocity_y(&self) -> i16 {
+        self.state_machine.context().velocity.y
     }
 }
 
@@ -220,9 +228,13 @@ impl Game for WalkTheDog {
                 .bounding_box()
                 .intersects(&walk.platform.bounding_box())
             {
-                walk.boy.land_on(walk.platform.bounding_box().y);
+                if walk.boy.velocity_y() > 0 && walk.boy.pos_y() < walk.platform.position.y {
+                    walk.boy.land_on(walk.platform.bounding_box().y);
+                } else {
+                    walk.boy.knock_out();
+                }
             }
-            
+
             if walk.boy.bounding_box().intersects(&walk.stone.bounding_box) {
                 walk.boy.knock_out();
             }
