@@ -45,9 +45,6 @@ impl RedHatBoy {
     fn draw(&self, renderer: &Renderer) {
         let sprite = self.current_sprite().expect("No sprite found");
 
-        // debug draw
-        renderer.draw_stroke_rect(&self.bounding_box());
-
         renderer.draw_image(
             &self.image,
             &Rect {
@@ -58,6 +55,9 @@ impl RedHatBoy {
             },
             &self.bounding_box(),
         );
+
+        // debug draw
+        renderer.draw_stroke_rect(&self.collision_box());
     }
 
     fn frame_name(&self) -> String {
@@ -80,6 +80,18 @@ impl RedHatBoy {
             y: (self.state_machine.context().position.y + sprite.sprite_source_size.y).into(),
             width: sprite.frame.w.into(),
             height: sprite.frame.h.into(),
+        }
+    }
+
+    // due to this is only used for collision detection, we can use the smaller sprite's bounding box
+    fn collision_box(&self) -> Rect {
+        let sprite = self.current_sprite().expect("No sprite found");
+
+        Rect {
+            x: (self.state_machine.context().position.x + sprite.sprite_source_size.x + 15).into(),
+            y: (self.state_machine.context().position.y + sprite.sprite_source_size.y + 15).into(),
+            width: (sprite.frame.w - 30).into(),
+            height: (sprite.frame.h - 15).into(),
         }
     }
 
@@ -124,6 +136,8 @@ struct Platform {
     position: Point,
 }
 
+const LOW_PLATFORM: i16 = 420;
+const HIGH_PLATFORM: i16 = 375;
 impl Platform {
     fn new(sheet: Sheet, image: HtmlImageElement, position: Point) -> Self {
         Platform {
@@ -136,9 +150,6 @@ impl Platform {
     fn draw(&self, renderer: &Renderer) {
         let platform = self.sheet.frames.get("13.png").expect("No 13.png found");
 
-        // debug
-        renderer.draw_stroke_rect(&self.bounding_box());
-
         renderer.draw_image(
             &self.image,
             &Rect {
@@ -148,7 +159,12 @@ impl Platform {
                 height: platform.frame.h.into(),
             },
             &self.bounding_box(),
-        )
+        );
+            
+        // debug
+        for collision_box in self.collision_boxes() {
+            renderer.draw_stroke_rect(&collision_box);
+        }
     }
 
     fn bounding_box(&self) -> Rect {
@@ -160,6 +176,36 @@ impl Platform {
             width: (platform.frame.w * 3).into(),
             height: platform.frame.h.into(),
         }
+    }
+
+    fn collision_boxes(&self) -> Vec<Rect> {
+        const X_OFFSET: f32 = 60.0;
+        const END_HEIGHT: f32 = 54.0;
+        let bb = self.bounding_box();
+
+        vec![
+            // left
+            Rect {
+                x: bb.x,
+                y: bb.y,
+                width: X_OFFSET,
+                height: END_HEIGHT,
+            },
+            // center
+            Rect {
+                x: bb.x + X_OFFSET,
+                y: bb.y,
+                width: bb.width - (X_OFFSET * 2.0),
+                height: bb.height,
+            },
+            // right
+            Rect {
+                x: bb.x + bb.width - X_OFFSET,
+                y: bb.y,
+                width: X_OFFSET,
+                height: END_HEIGHT,
+            },
+        ]
     }
 }
 
@@ -187,7 +233,7 @@ impl Game for WalkTheDog {
                 let platform = Platform::new(
                     platform_sheet.into_serde::<Sheet>()?,
                     engine::load_image((String::from(SPRITE_PATH) + "tiles.png").as_str()).await?,
-                    Point { x: 200, y: 350 },
+                    Point { x: 400, y: LOW_PLATFORM },
                 );
 
                 let rhb = RedHatBoy::new(
@@ -199,7 +245,7 @@ impl Game for WalkTheDog {
                 Ok(Box::new(WalkTheDog::Loaded(Walk {
                     boy: rhb,
                     background: Image::new(background, Point { x: 0, y: 0 }),
-                    stone: Image::new(stone, Point { x: 250, y: 546 }),
+                    stone: Image::new(stone, Point { x: 180, y: 546 }),
                     platform,
                 })))
             }
@@ -223,15 +269,14 @@ impl Game for WalkTheDog {
 
             walk.boy.update();
 
-            if walk
-                .boy
-                .bounding_box()
-                .intersects(&walk.platform.bounding_box())
-            {
-                if walk.boy.velocity_y() > 0 && walk.boy.pos_y() < walk.platform.position.y {
-                    walk.boy.land_on(walk.platform.bounding_box().y);
-                } else {
-                    walk.boy.knock_out();
+            // collision detection with platform
+            for cb in &walk.platform.collision_boxes() {
+                if walk.boy.bounding_box().intersects(cb) {
+                    if walk.boy.velocity_y() > 0 && walk.boy.pos_y() < cb.y as i16 {
+                        walk.boy.land_on(cb.y);
+                    } else {
+                        walk.boy.knock_out();
+                    }
                 }
             }
 
