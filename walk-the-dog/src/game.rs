@@ -1,13 +1,15 @@
 use crate::{
     browser,
     engine::{self, Game, Image, KeyState, Point, Rect, Renderer, Sheet},
-    state::{RedHatBoyStateMachine, Event},
     state::red_hat_boy_states::*,
+    state::{Event, RedHatBoyStateMachine},
 };
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use gloo_utils::format::JsValueSerdeExt;
 use web_sys::HtmlImageElement;
+
+pub const HEIGHT : i16 = 600;
 
 pub struct RedHatBoy {
     state_machine: RedHatBoyStateMachine,
@@ -83,7 +85,11 @@ impl RedHatBoy {
 
     fn knock_out(&mut self) {
         self.state_machine = self.state_machine.transition(Event::KnockOut);
-    } 
+    }
+    
+    fn land_on(&mut self, position: f32) {
+        self.state_machine = self.state_machine.transition(Event::Land(position));
+    }
 }
 
 pub enum WalkTheDog {
@@ -94,6 +100,58 @@ pub enum WalkTheDog {
 impl WalkTheDog {
     pub fn new() -> Self {
         WalkTheDog::Loading {}
+    }
+}
+
+pub struct Walk {
+    boy: RedHatBoy,
+    background: Image,
+    stone: Image,
+    platform: Platform,
+}
+
+struct Platform {
+    sheet: Sheet,
+    image: HtmlImageElement,
+    position: Point,
+}
+
+impl Platform {
+    fn new(sheet: Sheet, image: HtmlImageElement, position: Point) -> Self {
+        Platform {
+            sheet,
+            image,
+            position,
+        }
+    }
+
+    fn draw(&self, renderer: &Renderer) {
+        let platform = self.sheet.frames.get("13.png").expect("No 13.png found");
+
+        // debug
+        renderer.draw_stroke_rect(&self.bounding_box());
+
+        renderer.draw_image(
+            &self.image,
+            &Rect {
+                x: platform.frame.x.into(),
+                y: platform.frame.y.into(),
+                width: (platform.frame.w * 3).into(),
+                height: platform.frame.h.into(),
+            },
+            &self.bounding_box(),
+        )
+    }
+
+    fn bounding_box(&self) -> Rect {
+        let platform = self.sheet.frames.get("13.png").expect("No 13.png found");
+
+        Rect {
+            x: self.position.x.into(),
+            y: self.position.y.into(),
+            width: (platform.frame.w * 3).into(),
+            height: platform.frame.h.into(),
+        }
     }
 }
 
@@ -114,16 +172,27 @@ impl Game for WalkTheDog {
                     engine::load_image((String::from(BG_PATH) + "BG.png").as_str()).await?;
                 let stone =
                     engine::load_image((String::from(OBJECT_PATH) + "Stone.png").as_str()).await?;
+                let platform_sheet =
+                    browser::fetch_json((String::from(SPRITE_PATH) + "tiles.json").as_str())
+                        .await?;
+
+                let platform = Platform::new(
+                    platform_sheet.into_serde::<Sheet>()?,
+                    engine::load_image((String::from(SPRITE_PATH) + "tiles.png").as_str()).await?,
+                    Point { x: 200, y: 350 },
+                );
 
                 let rhb = RedHatBoy::new(
                     sheet,
                     engine::load_image((String::from(SPRITE_PATH) + "rhb_trimmed.png").as_str())
                         .await?,
                 );
+
                 Ok(Box::new(WalkTheDog::Loaded(Walk {
                     boy: rhb,
                     background: Image::new(background, Point { x: 0, y: 0 }),
-                    stone: Image::new(stone, Point { x: 150, y: 546 }),
+                    stone: Image::new(stone, Point { x: 250, y: 546 }),
+                    platform,
                 })))
             }
             WalkTheDog::Loaded(_) => Err(anyhow!("Error: Game is already initialized")),
@@ -145,11 +214,16 @@ impl Game for WalkTheDog {
             }
 
             walk.boy.update();
+
             if walk
                 .boy
                 .bounding_box()
-                .intersects(&walk.stone.bounding_box)
+                .intersects(&walk.platform.bounding_box())
             {
+                walk.boy.land_on(walk.platform.bounding_box().y);
+            }
+            
+            if walk.boy.bounding_box().intersects(&walk.stone.bounding_box) {
                 walk.boy.knock_out();
             }
         }
@@ -167,12 +241,7 @@ impl Game for WalkTheDog {
             walk.background.draw(renderer);
             walk.boy.draw(renderer);
             walk.stone.draw(renderer);
+            walk.platform.draw(renderer);
         }
     }
-}
-
-pub struct Walk {
-    boy: RedHatBoy,
-    background: Image,
-    stone: Image,
 }
