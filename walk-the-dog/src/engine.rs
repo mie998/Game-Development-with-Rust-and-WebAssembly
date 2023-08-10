@@ -275,4 +275,18 @@ impl Image {
         
         renderer.draw_entire_image(&self.element, &self.position);
     }
+
+    pub fn move_horizontally(&mut self, distance: i16) {
+        self.bounding_box.x += distance as f32;
+        self.position.x += distance;
+    }    
+
+    pub fn set_x(&mut self, x: i16) {
+        self.bounding_box.x = x as f32;
+        self.position.x = x;
+    }
+
+    pub fn right(&self) -> i16 {
+        (self.bounding_box.x + self.bounding_box.width) as i16 
+    }
 }

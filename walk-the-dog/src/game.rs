@@ -110,6 +110,10 @@ impl RedHatBoy {
     fn velocity_y(&self) -> i16 {
         self.state_machine.context().velocity.y
     }
+
+    fn walking_speed(&self) -> i16 {
+        self.state_machine.context().velocity.x
+    }
 }
 
 pub enum WalkTheDog {
@@ -125,9 +129,15 @@ impl WalkTheDog {
 
 pub struct Walk {
     boy: RedHatBoy,
-    background: Image,
+    backgrounds: [Image; 2],
     stone: Image,
     platform: Platform,
+}
+
+impl Walk {
+    fn velocity(&self) -> i16 {
+        -self.boy.walking_speed()
+    }
 }
 
 struct Platform {
@@ -160,7 +170,7 @@ impl Platform {
             },
             &self.bounding_box(),
         );
-            
+
         // debug
         for collision_box in self.collision_boxes() {
             renderer.draw_stroke_rect(&collision_box);
@@ -233,7 +243,10 @@ impl Game for WalkTheDog {
                 let platform = Platform::new(
                     platform_sheet.into_serde::<Sheet>()?,
                     engine::load_image((String::from(SPRITE_PATH) + "tiles.png").as_str()).await?,
-                    Point { x: 400, y: LOW_PLATFORM },
+                    Point {
+                        x: 400,
+                        y: HIGH_PLATFORM,
+                    },
                 );
 
                 let rhb = RedHatBoy::new(
@@ -242,9 +255,20 @@ impl Game for WalkTheDog {
                         .await?,
                 );
 
+                let background_width = background.width();
+
                 Ok(Box::new(WalkTheDog::Loaded(Walk {
                     boy: rhb,
-                    background: Image::new(background, Point { x: 0, y: 0 }),
+                    backgrounds: [
+                        Image::new(background.clone(), Point { x: 0, y: 0 }),
+                        Image::new(
+                            background,
+                            Point {
+                                x: background_width as i16,
+                                y: 0,
+                            },
+                        ),
+                    ],
                     stone: Image::new(stone, Point { x: 180, y: 546 }),
                     platform,
                 })))
@@ -267,7 +291,22 @@ impl Game for WalkTheDog {
                 walk.boy.slide();
             }
 
+            let velocity = walk.velocity();
+            
             walk.boy.update();
+            walk.platform.position.x += velocity;
+            walk.stone.move_horizontally(velocity);
+            
+            let [bg1, bg2] = &mut walk.backgrounds;
+            bg1.move_horizontally(velocity);
+            bg2.move_horizontally(velocity);
+
+            if bg1.right() < 0 {
+                bg1.set_x(bg2.right());
+            }
+            if bg2.right() < 0 {
+                bg2.set_x(bg1.right());
+            }
 
             // collision detection with platform
             for cb in &walk.platform.collision_boxes() {
@@ -281,7 +320,7 @@ impl Game for WalkTheDog {
             }
 
             if walk.boy.bounding_box().intersects(&walk.stone.bounding_box) {
-                walk.boy.knock_out();
+                // walk.boy.knock_out();
             }
         }
     }
@@ -295,7 +334,7 @@ impl Game for WalkTheDog {
         });
 
         if let WalkTheDog::Loaded(walk) = self {
-            walk.background.draw(renderer);
+            walk.backgrounds.iter().for_each(|bg| bg.draw(renderer));
             walk.boy.draw(renderer);
             walk.stone.draw(renderer);
             walk.platform.draw(renderer);
