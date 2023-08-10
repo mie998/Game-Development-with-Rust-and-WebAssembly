@@ -47,12 +47,11 @@ impl RedHatBoy {
 
         renderer.draw_image(
             &self.image,
-            &Rect {
-                x: sprite.frame.x.into(),
-                y: sprite.frame.y.into(),
-                width: sprite.frame.w.into(),
-                height: sprite.frame.h.into(),
-            },
+            &Rect::new(
+                Point::new(sprite.frame.x.into(), sprite.frame.y.into()),
+                sprite.frame.w.into(),
+                sprite.frame.h.into(),
+            ),
             &self.bounding_box(),
         );
 
@@ -75,31 +74,35 @@ impl RedHatBoy {
     fn bounding_box(&self) -> Rect {
         let sprite = self.current_sprite().expect("No sprite found");
 
-        Rect {
-            x: (self.state_machine.context().position.x + sprite.sprite_source_size.x).into(),
-            y: (self.state_machine.context().position.y + sprite.sprite_source_size.y).into(),
-            width: sprite.frame.w.into(),
-            height: sprite.frame.h.into(),
-        }
+        Rect::new(
+            Point::new(
+                (self.state_machine.context().position.x + sprite.sprite_source_size.x).into(),
+                (self.state_machine.context().position.y + sprite.sprite_source_size.y).into(),
+            ),
+            sprite.frame.w.into(),
+            sprite.frame.h.into(),
+        )
     }
 
     // due to this is only used for collision detection, we can use the smaller sprite's bounding box
     fn collision_box(&self) -> Rect {
         let sprite = self.current_sprite().expect("No sprite found");
 
-        Rect {
-            x: (self.state_machine.context().position.x + sprite.sprite_source_size.x + 15).into(),
-            y: (self.state_machine.context().position.y + sprite.sprite_source_size.y + 15).into(),
-            width: (sprite.frame.w - 30).into(),
-            height: (sprite.frame.h - 15).into(),
-        }
+        Rect::new(
+            Point::new(
+                (self.state_machine.context().position.x + sprite.sprite_source_size.x + 15).into(),
+                (self.state_machine.context().position.y + sprite.sprite_source_size.y + 15).into(),
+            ),
+            (sprite.frame.w - 30).into(),
+            (sprite.frame.h - 15).into(),
+        )
     }
 
     fn knock_out(&mut self) {
         self.state_machine = self.state_machine.transition(Event::KnockOut);
     }
 
-    fn land_on(&mut self, position: f32) {
+    fn land_on(&mut self, position: i16) {
         self.state_machine = self.state_machine.transition(Event::Land(position));
     }
 
@@ -162,12 +165,14 @@ impl Platform {
 
         renderer.draw_image(
             &self.image,
-            &Rect {
-                x: platform.frame.x.into(),
-                y: platform.frame.y.into(),
-                width: (platform.frame.w * 3).into(),
-                height: platform.frame.h.into(),
-            },
+            &Rect::new(
+                Point {
+                    x: platform.frame.x,
+                    y: platform.frame.y,
+                },
+                (platform.frame.w * 3).into(),
+                platform.frame.h.into(),
+            ),
             &self.bounding_box(),
         );
 
@@ -180,41 +185,29 @@ impl Platform {
     fn bounding_box(&self) -> Rect {
         let platform = self.sheet.frames.get("13.png").expect("No 13.png found");
 
-        Rect {
-            x: self.position.x.into(),
-            y: self.position.y.into(),
-            width: (platform.frame.w * 3).into(),
-            height: platform.frame.h.into(),
-        }
+        Rect::new(
+            self.position,
+            (platform.frame.w * 3).into(),
+            platform.frame.h.into(),
+        )
     }
 
     fn collision_boxes(&self) -> Vec<Rect> {
-        const X_OFFSET: f32 = 60.0;
-        const END_HEIGHT: f32 = 54.0;
+        const X_OFFSET: i16 = 60;
+        const END_HEIGHT: i16 = 54;
         let bb = self.bounding_box();
 
         vec![
             // left
-            Rect {
-                x: bb.x,
-                y: bb.y,
-                width: X_OFFSET,
-                height: END_HEIGHT,
-            },
+            Rect::new(bb.position, X_OFFSET, END_HEIGHT),
             // center
-            Rect {
-                x: bb.x + X_OFFSET,
-                y: bb.y,
-                width: bb.width - (X_OFFSET * 2.0),
-                height: bb.height,
-            },
+            Rect::new(
+                Point::new(bb.x() + X_OFFSET, bb.y()),
+                bb.width - (X_OFFSET * 2),
+                bb.height,
+            ),
             // right
-            Rect {
-                x: bb.x + bb.width - X_OFFSET,
-                y: bb.y,
-                width: X_OFFSET,
-                height: END_HEIGHT,
-            },
+            Rect::new(Point::new(bb.x() - X_OFFSET + bb.width, bb.y()), X_OFFSET, END_HEIGHT),
         ]
     }
 }
@@ -292,11 +285,11 @@ impl Game for WalkTheDog {
             }
 
             let velocity = walk.velocity();
-            
+
             walk.boy.update();
             walk.platform.position.x += velocity;
             walk.stone.move_horizontally(velocity);
-            
+
             let [bg1, bg2] = &mut walk.backgrounds;
             bg1.move_horizontally(velocity);
             bg2.move_horizontally(velocity);
@@ -311,8 +304,8 @@ impl Game for WalkTheDog {
             // collision detection with platform
             for cb in &walk.platform.collision_boxes() {
                 if walk.boy.bounding_box().intersects(cb) {
-                    if walk.boy.velocity_y() > 0 && walk.boy.pos_y() < cb.y as i16 {
-                        walk.boy.land_on(cb.y);
+                    if walk.boy.velocity_y() > 0 && walk.boy.pos_y() < cb.y() as i16 {
+                        walk.boy.land_on(cb.y());
                     } else {
                         walk.boy.knock_out();
                     }
@@ -326,12 +319,7 @@ impl Game for WalkTheDog {
     }
 
     fn draw(&self, renderer: &Renderer) {
-        renderer.clear(&Rect {
-            x: 0.0,
-            y: 0.0,
-            width: 600.0,
-            height: 600.0,
-        });
+        renderer.clear(&Rect::new(Point::new(0, 0), 600, 600));
 
         if let WalkTheDog::Loaded(walk) = self {
             walk.backgrounds.iter().for_each(|bg| bg.draw(renderer));

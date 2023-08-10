@@ -16,7 +16,7 @@ pub enum Event {
     Slide,
     Update,
     KnockOut,
-    Land(f32),
+    Land(i16),
 }
 
 impl RedHatBoyStateMachine {
@@ -216,7 +216,7 @@ pub mod red_hat_boy_states {
             self
         }
     }
-    
+
     #[derive(Copy, Clone)]
     pub struct RedHatBoyState<S> {
         context: RedHatBoyContext,
@@ -305,11 +305,11 @@ pub mod red_hat_boy_states {
         pub fn knock_out(self) -> RedHatBoyState<Falling> {
             RedHatBoyState {
                 context: self.context.reset_frame().set_horizontal_velocity(0),
-                _state: Falling {}
+                _state: Falling {},
             }
         }
-        
-        pub fn land_on(self, position: f32) -> RedHatBoyState<Running> {
+
+        pub fn land_on(self, position: i16) -> RedHatBoyState<Running> {
             RedHatBoyState {
                 context: self.context.set_on(position as i16),
                 _state: Running {},
@@ -340,7 +340,7 @@ pub mod red_hat_boy_states {
             }
         }
 
-        pub fn land_on(self, position: f32) -> RedHatBoyState<Running> {
+        pub fn land_on(self, position: i16) -> RedHatBoyState<Running> {
             RedHatBoyState {
                 context: self.context.reset_frame().set_on(position as i16),
                 _state: Running {},
@@ -396,9 +396,9 @@ pub mod red_hat_boy_states {
             }
         }
 
-        pub fn land_on(self, position: f32) -> RedHatBoyState<Sliding> {
+        pub fn land_on(self, position: i16) -> RedHatBoyState<Sliding> {
             RedHatBoyState {
-                context: self.context.set_on(position as i16),
+                context: self.context.set_on(position),
                 _state: Sliding {},
             }
         }
