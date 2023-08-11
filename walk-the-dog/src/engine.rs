@@ -42,6 +42,26 @@ impl Point {
     }
 }
 
+pub struct SpriteSheet {
+    pub image: HtmlImageElement,
+    pub sheet: Sheet,
+}
+
+impl SpriteSheet {
+    pub fn new(image: HtmlImageElement, sheet: Sheet) -> Self {
+        SpriteSheet { image, sheet }
+    }
+
+    pub fn cell(&self, name: &str) -> Option<Cell> {
+        self.sheet.frames.get(name).cloned()
+    }
+
+    pub fn draw(&self, renderer: &Renderer, source: &Rect, dest: &Rect) {
+        renderer.draw_image(&self.image, source, dest);
+    }
+}
+
+#[derive(Clone, Copy)]
 pub struct Rect {
     pub position: Point,
     pub width: i16,
@@ -49,7 +69,7 @@ pub struct Rect {
 }
 
 impl Rect {
-    pub fn new(position: Point, width: i16, height: i16) -> Self {
+    pub const fn new(position: Point, width: i16, height: i16) -> Self {
         Rect {
             position,
             width,
@@ -57,7 +77,7 @@ impl Rect {
         }
     }
 
-    pub fn new_from_x_y(x: i16, y: i16, width: i16, height: i16) -> Self {
+    pub const fn new_from_x_y(x: i16, y: i16, width: i16, height: i16) -> Self {
         Rect {
             position: Point { x, y },
             width,
@@ -68,11 +88,11 @@ impl Rect {
     pub fn x(&self) -> i16 {
         self.position.x
     }
-    
+
     pub fn set_x(&mut self, x: i16) {
         self.position.x = x;
     }
-    
+
     pub fn add_x(&mut self, x: i16) {
         self.position.x += x;
     }
@@ -80,11 +100,13 @@ impl Rect {
     pub fn y(&self) -> i16 {
         self.position.y
     }
-    
+
+    #[allow(dead_code)]
     pub fn set_y(&mut self, y: i16) {
         self.position.y = y;
     }
-    
+
+    #[allow(dead_code)]
     pub fn add_y(&mut self, y: i16) {
         self.position.y += y;
     }

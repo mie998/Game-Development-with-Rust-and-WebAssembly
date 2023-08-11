@@ -181,7 +181,7 @@ pub mod red_hat_boy_states {
 
             // velona-method
             // self.position.x += self.velocity.x;
-            // self.position.y += self.velocity.y;
+            self.position.y += self.velocity.y;
 
             if self.position.y > FLOOR {
                 self.position.y = FLOOR;
