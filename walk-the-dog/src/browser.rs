@@ -4,11 +4,14 @@ use wasm_bindgen::{closure::WasmClosure, JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{CanvasRenderingContext2d, Document, HtmlCanvasElement, HtmlImageElement, Window};
 
+#[allow(unused_macros)]
 macro_rules! log {
     ($($t:tt)* ) => {
         web_sys::console::log_1(&format!( $($t)* ).into());
     }
 }
+
+#[allow(unused_macros)]
 macro_rules! error {
     ($($t:tt)* ) => {
         web_sys::console::error_1(&format!( $($t)* ).into());

@@ -173,6 +173,7 @@ impl Renderer {
     }
 }
 
+#[allow(unused_must_use)]
 pub async fn load_image(source: &str) -> Result<HtmlImageElement> {
     let image = browser::new_image()?;
 
@@ -244,7 +245,7 @@ impl GameLoop {
             game_loop.last_frame = perf;
             game.draw(&renderer);
 
-            browser::request_animation_frame(f.borrow().as_ref().unwrap());
+            browser::request_animation_frame(f.borrow().as_ref().unwrap()).unwrap();
         }));
 
         browser::request_animation_frame(
@@ -298,6 +299,7 @@ fn process_input(state: &mut KeyState, keyevent_receiver: &mut UnboundedReceiver
     }
 }
 
+#[allow(unused_must_use)]
 fn prepare_input() -> Result<UnboundedReceiver<KeyPress>> {
     let (keydown_sender, keyevent_receiver) = unbounded();
     let keydown_sender = Rc::new(RefCell::new(keydown_sender));

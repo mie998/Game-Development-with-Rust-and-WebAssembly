@@ -180,8 +180,6 @@ pub struct Platform {
     position: Point,
 }
 
-// const LOW_PLATFORM: i16 = 420;
-const HIGH_PLATFORM: i16 = 375;
 impl Platform {
     pub fn new(
         sheet: Rc<SpriteSheet>,
