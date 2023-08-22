@@ -30,6 +30,7 @@ futures = "0.3.17"
 wasm-bindgen-futures = "0.4.28"
 anyhow = "1.0.51"
 async-trait = "0.1.52"
+js-sys = "0.3.55"
 
 # `wee_alloc` is a tiny allocator for wasm that is only ~1K in code size
 # compared to the default allocator's ~10K. However, it is slower than the default
@@ -37,7 +38,7 @@ async-trait = "0.1.52"
 wee_alloc = { version = "0.4.2", optional = true }
 getrandom = { version = "0.2.3", features = ["js"] }
 serde = { version = "1.0.131", features = ["derive"] }
-gloo-utils = {version = "0.1", features = ["serde"]}
+gloo-utils = { version = "0.1", features = ["serde"] }
 
 # The `web-sys` crate allows you to interact with the various browser APIs,
 # like the DOM.
@@ -54,7 +55,11 @@ features = [
   "CanvasRenderingContext2d",
   "Response",
   "Performance",
+  "AudioContext",
   "KeyboardEvent",
+  "AudioBuffer",
+  "AudioBufferSourceNode",
+  "AudioDestinationNode",
 ]
 
 # These crates are used for running unit tests.

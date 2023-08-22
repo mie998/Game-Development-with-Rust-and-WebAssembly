@@ -2,6 +2,7 @@ use crate::{
     browser,
     engine::{self, Cell, Game, Image, KeyState, Point, Rect, Renderer, Sheet, SpriteSheet},
     segments::*,
+    sound::{Audio, Sound},
     state::red_hat_boy_states::*,
     state::{Event, RedHatBoyStateMachine},
 };
@@ -24,28 +25,28 @@ pub struct RedHatBoy {
 }
 
 impl RedHatBoy {
-    fn new(sprite_sheet: Sheet, image: HtmlImageElement) -> Self {
+    fn new(sprite_sheet: Sheet, image: HtmlImageElement, audio: Audio, sound: Sound) -> Self {
         RedHatBoy {
-            state_machine: RedHatBoyStateMachine::Idle(RedHatBoyState::new()),
+            state_machine: RedHatBoyStateMachine::Idle(RedHatBoyState::new(audio, sound)),
             sprite_sheet,
             image,
         }
     }
 
     fn run_right(&mut self) {
-        self.state_machine = self.state_machine.transition(Event::Run);
+        self.state_machine = self.state_machine.clone().transition(Event::Run);
     }
 
     fn slide(&mut self) {
-        self.state_machine = self.state_machine.transition(Event::Slide);
+        self.state_machine = self.state_machine.clone().transition(Event::Slide);
     }
 
     fn jump(&mut self) {
-        self.state_machine = self.state_machine.transition(Event::Jump);
+        self.state_machine = self.state_machine.clone().transition(Event::Jump);
     }
 
     fn update(&mut self) {
-        self.state_machine = self.state_machine.update();
+        self.state_machine = self.state_machine.clone().update();
     }
 
     fn draw(&self, renderer: &Renderer) {
@@ -105,11 +106,11 @@ impl RedHatBoy {
     }
 
     fn knock_out(&mut self) {
-        self.state_machine = self.state_machine.transition(Event::KnockOut);
+        self.state_machine = self.state_machine.clone().transition(Event::KnockOut);
     }
 
     fn land_on(&mut self, position: i16) {
-        self.state_machine = self.state_machine.transition(Event::Land(position));
+        self.state_machine = self.state_machine.clone().transition(Event::Land(position));
     }
 
     fn pos_y(&self) -> i16 {
@@ -241,10 +242,17 @@ impl Game for WalkTheDog {
                     tiles.into_serde::<Sheet>()?,
                 ));
 
+                let audio = Audio::new()?;
+                let sound = audio
+                    .load_sound("walk_the_dog_assets-0.0.7/sounds/SFX_Jump_23.mp3")
+                    .await?;
+
                 let rhb = RedHatBoy::new(
                     sheet,
                     engine::load_image((String::from(SPRITE_PATH) + "rhb_trimmed.png").as_str())
                         .await?,
+                    audio,
+                    sound,
                 );
 
                 let starting_obstacles =

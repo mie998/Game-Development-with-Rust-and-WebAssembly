@@ -9,6 +9,7 @@ use serde::Deserialize;
 use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Mutex};
 use wasm_bindgen::{prelude::Closure, JsCast, JsValue};
 use web_sys::{CanvasRenderingContext2d, HtmlImageElement};
+use web_sys::{AudioBuffer, AudioContext};
 
 #[derive(Deserialize, Clone)]
 pub struct SheetRect {
@@ -363,4 +364,14 @@ impl Image {
     pub fn position(&self) -> Point {
         self.bounding_box.position
     }
+}
+
+#[derive(Clone)]
+pub struct Audio {
+    context: AudioContext,
+}
+
+#[derive(Clone)]
+pub struct Sound {
+    buffer: AudioBuffer,
 }

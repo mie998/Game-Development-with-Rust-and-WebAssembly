@@ -6,6 +6,7 @@ mod engine;
 mod game;
 mod state;
 mod segments;
+mod sound;
 
 // When the `wee_alloc` feature is enabled, this uses `wee_alloc` as the global
 // allocator.
