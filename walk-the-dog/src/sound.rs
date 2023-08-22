@@ -24,10 +24,23 @@ fn connect_with_audio_node(
         .map_err(|err| anyhow!("Failed to connect with audio node: {:#?}", err))
 }
 
-pub fn play_sound(ctx: &AudioContext, buffer: &AudioBuffer) -> Result<()> {
-    let source = create_buffer_source(ctx)?;
-    source.set_buffer(Some(buffer));
-    connect_with_audio_node(&source, &ctx.destination())?;
+fn create_track_source(ctx: &AudioContext, buffer: &AudioBuffer) -> Result<AudioBufferSourceNode> {
+    let track_source = create_buffer_source(ctx)?;
+    track_source.set_buffer(Some(&buffer));
+    connect_with_audio_node(&track_source, &ctx.destination())?;
+    Ok(track_source)
+}
+
+pub enum LOOPING {
+    NO,
+    YES,
+}
+
+pub fn play_sound(ctx: &AudioContext, buffer: &AudioBuffer, looping: LOOPING) -> Result<()> {
+    let source = create_track_source(ctx, buffer)?;
+    if matches!(looping, LOOPING::YES) {
+        source.set_loop(true);
+    }
 
     source
         .start()
@@ -69,10 +82,16 @@ impl Audio {
         let array_buffer = browser::fetch_array_buffer(filename).await?;
         let audio_buffer = decode_audio_data(&self.context, &array_buffer).await?;
 
-        Ok(Sound { buffer: audio_buffer, }) 
+        Ok(Sound {
+            buffer: audio_buffer,
+        })
     }
 
     pub fn play_sound(&self, sound: &Sound) -> Result<()> {
-        play_sound(&self.context, &sound.buffer)
+        play_sound(&self.context, &sound.buffer, LOOPING::NO)
+    }
+    
+    pub fn play_looping_sound(&self, sound: &Sound) -> Result<()> {
+        play_sound(&self.context, &sound.buffer, LOOPING::YES)
     }
 }

@@ -246,6 +246,11 @@ impl Game for WalkTheDog {
                 let sound = audio
                     .load_sound("walk_the_dog_assets-0.0.7/sounds/SFX_Jump_23.mp3")
                     .await?;
+                let background_music = audio
+                    .load_sound("walk_the_dog_assets-0.0.7/sounds/background_song.mp3")
+                    .await?;
+
+                audio.play_looping_sound(&background_music)?;
 
                 let rhb = RedHatBoy::new(
                     sheet,
