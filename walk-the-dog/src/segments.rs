@@ -1,6 +1,5 @@
 use std::rc::Rc;
 use web_sys::HtmlImageElement;
-use js_sys::ArrayBuffer;
 
 use crate::engine::{Image, Point, Rect, SpriteSheet};
 use crate::game::{Barrier, Obstacle, Platform};
@@ -91,4 +90,3 @@ pub fn platform_and_stone(
         )),
     ]
 }
-

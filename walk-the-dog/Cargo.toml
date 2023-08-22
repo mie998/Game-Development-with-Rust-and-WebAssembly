@@ -60,6 +60,8 @@ features = [
   "AudioBuffer",
   "AudioBufferSourceNode",
   "AudioDestinationNode",
+  "GainNode",
+  "AudioParam"
 ]
 
 # These crates are used for running unit tests.

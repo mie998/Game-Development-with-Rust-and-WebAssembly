@@ -220,7 +220,7 @@ pub mod red_hat_boy_states {
         }
 
         fn play_jump_sound(self) -> Self {
-            if let Err(err) = self.audio.play_sound(&self.jump_sound) {
+            if let Err(err) = self.audio.play_sound(&self.jump_sound, 0.01) {
                 log!("Error playing jump sound: {}", err);
             }
             self

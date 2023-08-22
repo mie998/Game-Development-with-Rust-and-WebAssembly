@@ -24,10 +24,24 @@ fn connect_with_audio_node(
         .map_err(|err| anyhow!("Failed to connect with audio node: {:#?}", err))
 }
 
-fn create_track_source(ctx: &AudioContext, buffer: &AudioBuffer) -> Result<AudioBufferSourceNode> {
+fn create_track_source(ctx: &AudioContext, buffer: &AudioBuffer, volume: f32) -> Result<AudioBufferSourceNode> {
     let track_source = create_buffer_source(ctx)?;
     track_source.set_buffer(Some(&buffer));
-    connect_with_audio_node(&track_source, &ctx.destination())?;
+
+    // adjust volume
+    let gain_node = ctx
+        .create_gain()
+        .map_err(|err| anyhow!("Failed to create gain node: {:#?}", err))?;
+    gain_node
+        .gain()
+        .set_value_at_time(volume, ctx.current_time())
+        .map_err(|err| anyhow!("Failed to set gain value at time: {:#?}", err))?;
+
+    connect_with_audio_node(&track_source, &gain_node)?;
+    gain_node
+        .connect_with_audio_node(&ctx.destination())
+        .map_err(|err| anyhow!("Failed to set gain value at time: {:#?}", err))?;
+
     Ok(track_source)
 }
 
@@ -36,8 +50,8 @@ pub enum LOOPING {
     YES,
 }
 
-pub fn play_sound(ctx: &AudioContext, buffer: &AudioBuffer, looping: LOOPING) -> Result<()> {
-    let source = create_track_source(ctx, buffer)?;
+pub fn play_sound(ctx: &AudioContext, buffer: &AudioBuffer, looping: LOOPING, volume: f32) -> Result<()> {
+    let source = create_track_source(ctx, buffer, volume)?;
     if matches!(looping, LOOPING::YES) {
         source.set_loop(true);
     }
@@ -87,11 +101,11 @@ impl Audio {
         })
     }
 
-    pub fn play_sound(&self, sound: &Sound) -> Result<()> {
-        play_sound(&self.context, &sound.buffer, LOOPING::NO)
+    pub fn play_sound(&self, sound: &Sound, volume: f32) -> Result<()> {
+        play_sound(&self.context, &sound.buffer, LOOPING::NO, volume)
     }
-    
-    pub fn play_looping_sound(&self, sound: &Sound) -> Result<()> {
-        play_sound(&self.context, &sound.buffer, LOOPING::YES)
+
+    pub fn play_looping_sound(&self, sound: &Sound, volume: f32) -> Result<()> {
+        play_sound(&self.context, &sound.buffer, LOOPING::YES, volume)
     }
 }
